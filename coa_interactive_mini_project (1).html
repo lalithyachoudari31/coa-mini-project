@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COA Mini-Project: Interactive Hardware Game Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .wire-glow { box-shadow: 0 0 10px rgba(6, 182, 212, 0.6); }
+        .active-wire { background-color: #06b6d4 !important; border-color: #22d3ee !important; }
+        .active-wire-green { background-color: #10b981 !important; border-color: #34d399 !important; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-4">
+
+    <!-- Header & Navigation -->
+    <header class="w-full max-w-4xl text-center py-6 border-b border-slate-800 mb-6">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-cyan-400 tracking-wide">
+            ⚡ COA Hardware Arithmetic Arcade
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">Interactive Simulation & Circuit Arcade for Architecture Concepts</p>
+        
+        <!-- Score Bar -->
+        <div class="flex justify-center gap-6 mt-3 font-mono text-xs text-slate-300 bg-slate-900/80 px-4 py-2 rounded-full w-max mx-auto border border-slate-800">
+            <span>Score: <strong id="gameScore" class="text-emerald-400 font-bold">0</strong> XP</span>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="flex flex-wrap justify-center gap-2 mt-6">
+            <button onclick="setTab('adder')" id="tab-adder" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-cyan-500 text-slate-950">
+                1. Logic Gate Adder Game
+            </button>
+            <button onclick="setTab('booth')" id="tab-booth" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+                2. Booth's Multiplier
+            </button>
+            <button onclick="setTab('division')" id="tab-division" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+                3. Restoring Division Quest
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="w-full max-w-4xl flex-1">
+
+        <!-- MODE 1: LOGIC GATE ADDER GAME -->
+        <section id="sec-adder" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span>🔌 Interactive Logic Gate Circuit Board</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">Observe real-time digital signal flow & wire propagation through hardware logic gates</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <select id="adderType" onchange="updateAdderUI()" class="bg-slate-950 border border-slate-700 text-cyan-400 text-xs font-mono font-bold rounded-lg px-3 py-1.5 focus:outline-none">
+                        <option value="half">Half Adder (XOR + AND)</option>
+                        <option value="full">Full Adder (2x XOR + 2x AND + OR)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Target Specs Challenge -->
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center font-mono text-xs">
+                <span class="text-slate-400">Target Challenge: <span id="adderChallenge" class="text-amber-400 font-bold">Set Inputs to make SUM=1 & CARRY=0</span></span>
+                <button onclick="newAdderChallenge()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-md font-bold transition">New Goal</button>
+            </div>
+
+            <!-- Interactive Inputs Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div class="flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800">
+                    <span class="font-mono text-xs font-bold text-slate-300">Input A</span>
+                    <button onclick="toggleBit('A')" id="btnA" class="w-10 h-8 rounded-lg font-mono font-bold text-sm bg-slate-800 text-slate-400 border border-slate-700 transition">0</button>
+                </div>
+                <div class="flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800">
+                    <span class="font-mono text-xs font-bold text-slate-300">Input B</span>
+                    <button onclick="toggleBit('B')" id="btnB" class="w-10 h-8 rounded-lg font-mono font-bold text-base bg-slate-800 text-slate-400 border border-slate-700 transition">0</button>
+                </div>
+                <div id="rowCin" class="hidden flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800">
+                    <span class="font-mono text-xs font-bold text-slate-300">Input Cin</span>
+                    <button onclick="toggleBit('Cin')" id="btnCin" class="w-10 h-8 rounded-lg font-mono font-bold text-base bg-slate-800 text-slate-400 border border-slate-700 transition">0</button>
+                </div>
+            </div>
+
+            <!-- Dynamic SVG Circuit Diagram with Visual Logic Gates -->
+            <div class="bg-slate-950 p-4 sm:p-6 rounded-2xl border border-slate-800 flex justify-center items-center overflow-x-auto">
+                <!-- HALF ADDER SVG -->
+                <svg id="svgHalfAdder" class="w-full max-w-md h-auto" viewBox="0 0 400 220">
+                    <defs>
+                        <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                        <filter id="glowEmerald" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+
+                    <!-- Wires -->
+                    <path id="wireA_XOR" d="M 40 50 L 160 50" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <path id="wireA_AND" d="M 70 50 L 70 150 L 160 150" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <path id="wireB_XOR" d="M 40 90 L 160 90" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <path id="wireB_AND" d="M 100 90 L 100 180 L 160 180" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    
+                    <path id="wireXOR_SUM" d="M 230 70 L 330 70" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <path id="wireAND_CARRY" d="M 230 165 L 330 165" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+                    <!-- Input Node Indicators -->
+                    <circle cx="40" cy="50" r="6" id="nodeA" fill="#475569"/>
+                    <text x="15" y="54" fill="#94a3b8" font-size="12" font-family="monospace" font-weight="bold">A</text>
+                    
+                    <circle cx="40" cy="90" r="6" id="nodeB" fill="#475569"/>
+                    <text x="15" y="94" fill="#94a3b8" font-size="12" font-family="monospace" font-weight="bold">B</text>
+
+                    <!-- XOR GATE (Sum) -->
+                    <g transform="translate(150, 40)">
+                        <path d="M 10 10 C 20 20, 20 40, 10 50 M 17 10 C 27 20, 27 40, 17 50 C 35 50, 60 45, 70 30 C 60 15, 35 10, 17 10 Z" 
+                              id="gateXorBody" fill="#0f172a" stroke="#475569" stroke-width="2.5" />
+                        <text x="32" y="34" fill="#38bdf8" font-size="11" font-family="monospace" font-weight="bold">XOR</text>
+                    </g>
+
+                    <!-- AND GATE (Carry) -->
+                    <g transform="translate(150, 135)">
+                        <path d="M 10 10 L 40 10 C 60 10, 70 20, 70 30 C 70 40, 60 50, 40 50 L 10 50 Z" 
+                              id="gateAndBody" fill="#0f172a" stroke="#475569" stroke-width="2.5" />
+                        <text x="26" y="34" fill="#34d399" font-size="11" font-family="monospace" font-weight="bold">AND</text>
+                    </g>
+
+                    <!-- Output LEDs -->
+                    <g transform="translate(330, 50)">
+                        <circle cx="20" cy="20" r="16" id="svgLedSum" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+                        <text id="svgTextSum" x="16" y="25" fill="#64748b" font-size="14" font-family="monospace" font-weight="bold">0</text>
+                        <text x="44" y="24" fill="#38bdf8" font-size="11" font-family="monospace" font-weight="bold">SUM (S)</text>
+                    </g>
+
+                    <g transform="translate(330, 145)">
+                        <circle cx="20" cy="20" r="16" id="svgLedCarry" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+                        <text id="svgTextCarry" x="16" y="25" fill="#64748b" font-size="14" font-family="monospace" font-weight="bold">0</text>
+                        <text x="44" y="24" fill="#34d399" font-size="11" font-family="monospace" font-weight="bold">CARRY</text>
+                    </g>
+                </svg>
+
+                <!-- FULL ADDER SVG -->
+                <svg id="svgFullAdder" class="hidden w-full max-w-lg h-auto" viewBox="0 0 520 280">
+                    <!-- Wires -->
+                    <path id="wireFA_A" d="M 30 40 L 110 40" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    <path id="wireFA_B" d="M 30 70 L 110 70" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    <path id="wireFA_Cin" d="M 30 180 L 250 180" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    
+                    <path id="wireFA_A_AND1" d="M 50 40 L 50 115 L 110 115" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    <path id="wireFA_B_AND1" d="M 70 70 L 70 140 L 110 140" stroke="#334155" stroke-width="3.5" fill="none"/>
+
+                    <path id="wireFA_XOR1_XOR2" d="M 170 55 L 250 55" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    <path id="wireFA_XOR1_AND2" d="M 190 55 L 190 205 L 250 205" stroke="#334155" stroke-width="3.5" fill="none"/>
+
+                    <path id="wireFA_XOR2_SUM" d="M 310 65 L 430 65" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    
+                    <path id="wireFA_AND1_OR" d="M 170 130 L 360 130 L 360 170" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    <path id="wireFA_AND2_OR" d="M 310 195 L 360 195" stroke="#334155" stroke-width="3.5" fill="none"/>
+                    <path id="wireFA_OR_COUT" d="M 420 185 L 430 185" stroke="#334155" stroke-width="3.5" fill="none"/>
+
+                    <!-- Inputs labels -->
+                    <text x="10" y="44" fill="#94a3b8" font-size="11" font-family="monospace" font-weight="bold">A</text>
+                    <text x="10" y="74" fill="#94a3b8" font-size="11" font-family="monospace" font-weight="bold">B</text>
+                    <text x="5" y="184" fill="#94a3b8" font-size="11" font-family="monospace" font-weight="bold">Cin</text>
+
+                    <!-- Gate 1: XOR1 -->
+                    <g transform="translate(100, 30)">
+                        <path d="M 10 10 C 20 20, 20 40, 10 50 M 17 10 C 27 20, 27 40, 17 50 C 35 50, 60 45, 70 30 C 60 15, 35 10, 17 10 Z" 
+                              id="gateFaXor1" fill="#0f172a" stroke="#475569" stroke-width="2" />
+                        <text x="24" y="33" fill="#38bdf8" font-size="9" font-family="monospace" font-weight="bold">XOR1</text>
+                    </g>
+
+                    <!-- Gate 2: AND1 -->
+                    <g transform="translate(100, 105)">
+                        <path d="M 10 10 L 40 10 C 60 10, 70 20, 70 30 C 70 40, 60 50, 40 50 L 10 50 Z" 
+                              id="gateFaAnd1" fill="#0f172a" stroke="#475569" stroke-width="2" />
+                        <text x="24" y="33" fill="#34d399" font-size="9" font-family="monospace" font-weight="bold">AND1</text>
+                    </g>
+
+                    <!-- Gate 3: XOR2 -->
+                    <g transform="translate(240, 40)">
+                        <path d="M 10 10 C 20 20, 20 40, 10 50 M 17 10 C 27 20, 27 40, 17 50 C 35 50, 60 45, 70 30 C 60 15, 35 10, 17 10 Z" 
+                              id="gateFaXor2" fill="#0f172a" stroke="#475569" stroke-width="2" />
+                        <text x="24" y="33" fill="#38bdf8" font-size="9" font-family="monospace" font-weight="bold">XOR2</text>
+                    </g>
+
+                    <!-- Gate 4: AND2 -->
+                    <g transform="translate(240, 170)">
+                        <path d="M 10 10 L 40 10 C 60 10, 70 20, 70 30 C 70 40, 60 50, 40 50 L 10 50 Z" 
+                              id="gateFaAnd2" fill="#0f172a" stroke="#475569" stroke-width="2" />
+                        <text x="24" y="33" fill="#34d399" font-size="9" font-family="monospace" font-weight="bold">AND2</text>
+                    </g>
+
+                    <!-- Gate 5: OR -->
+                    <g transform="translate(350, 160)">
+                        <path d="M 10 10 C 25 10, 40 20, 65 25 C 40 30, 25 40, 10 40 C 20 30, 20 20, 10 10 Z" 
+                              id="gateFaOr" fill="#0f172a" stroke="#475569" stroke-width="2" />
+                        <text x="24" y="28" fill="#c084fc" font-size="9" font-family="monospace" font-weight="bold">OR</text>
+                    </g>
+
+                    <!-- Outputs -->
+                    <g transform="translate(430, 45)">
+                        <circle cx="18" cy="18" r="14" id="faLedSum" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                        <text id="faTextSum" x="14" y="23" fill="#64748b" font-size="12" font-family="monospace" font-weight="bold">0</text>
+                        <text x="38" y="22" fill="#38bdf8" font-size="10" font-family="monospace" font-weight="bold">SUM</text>
+                    </g>
+
+                    <g transform="translate(430, 165)">
+                        <circle cx="18" cy="18" r="14" id="faLedCout" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                        <text id="faTextCout" x="14" y="23" fill="#64748b" font-size="12" font-family="monospace" font-weight="bold">0</text>
+                        <text x="38" y="22" fill="#34d399" font-size="10" font-family="monospace" font-weight="bold">Cout</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Feedback Message -->
+            <div id="adderFeedback" class="hidden p-3 rounded-xl font-mono text-xs text-center font-bold"></div>
+        </section>
+
+        <!-- MODE 2: BOOTH'S MULTIPLICATION SIMULATOR -->
+        <section id="sec-booth" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Booth's Multiplication Challenge & Algorithm Flow</h2>
+                    <p class="text-xs text-slate-400">Act as the ALU: evaluate bit pairs (Q0, Q-1) and execute the correct operation</p>
+                </div>
+                <button onclick="resetBooth()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition">
+                    🔄 New Problem
+                </button>
+            </div>
+
+            <!-- Algorithm Explanation Accordion/Card -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                <div class="flex items-center justify-between cursor-pointer" onclick="document.getElementById('boothExpText').classList.toggle('hidden')">
+                    <h3 class="text-xs font-mono font-bold text-cyan-400 flex items-center gap-2">
+                        <span>📖 How Booth's Algorithm Works (Click to toggle explanation)</span>
+                    </h3>
+                    <span class="text-xs text-slate-500 font-mono">▼</span>
+                </div>
+                <div id="boothExpText" class="text-xs text-slate-300 leading-relaxed space-y-2 font-sans border-t border-slate-800 pt-3">
+                    <p>
+                        <strong class="text-white">Booth's Algorithm</strong> is a hardware multiplication technique for 2's complement signed binary numbers. It reduces arithmetic steps by treating strings of 1s in the multiplier as a single addition and subtraction.
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-slate-400 font-mono text-[11px]">
+                        <li><span class="text-cyan-400 font-bold">Bit Pair (Q0, Q-1) = 1 0:</span> Subtract M from AC (<code class="text-rose-400">AC = AC - M</code>), then Arithmetic Right Shift [AC, Q, Q-1].</li>
+                        <li><span class="text-cyan-400 font-bold">Bit Pair (Q0, Q-1) = 0 1:</span> Add M to AC (<code class="text-emerald-400">AC = AC + M</code>), then Arithmetic Right Shift [AC, Q, Q-1].</li>
+                        <li><span class="text-cyan-400 font-bold">Bit Pair (Q0, Q-1) = 0 0 or 1 1:</span> No arithmetic operation. Only perform Arithmetic Right Shift.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Interactive Visual SVG Flowchart for Booth's Algorithm -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col items-center">
+                <div class="text-[11px] font-mono text-slate-400 mb-2 font-bold w-full text-left flex justify-between items-center">
+                    <span>⚡ BOOTH'S ALGORITHM DECISION FLOWCHART</span>
+                    <span id="fcBoothStatus" class="text-amber-400">Active Node: START</span>
+                </div>
+                <svg id="svgBoothFlowchart" class="w-full max-w-lg h-auto" viewBox="0 0 500 240">
+                    <!-- Start Box -->
+                    <rect id="fcNodeStart" x="200" y="10" width="100" height="30" rx="15" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                    <text x="250" y="30" fill="#f8fafc" font-size="11" font-family="monospace" font-weight="bold" text-anchor="middle">START: (Q0, Q-1)</text>
+
+                    <path d="M 250 40 L 250 65" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+                    <!-- Decision Branching Lines -->
+                    <path d="M 250 65 L 80 65 L 80 90" stroke="#475569" stroke-width="2"/>
+                    <path d="M 250 65 L 250 90" stroke="#475569" stroke-width="2"/>
+                    <path d="M 250 65 L 420 65 L 420 90" stroke="#475569" stroke-width="2"/>
+
+                    <!-- Node 10: AC = AC - M -->
+                    <g id="fcGroup10" transform="translate(30, 90)">
+                        <rect id="fcBox10" x="0" y="0" width="100" height="45" rx="8" fill="#0f172a" stroke="#f43f5e" stroke-width="2"/>
+                        <text x="50" y="18" fill="#f43f5e" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">Q0, Q-1 = 1 0</text>
+                        <text x="50" y="34" fill="#f8fafc" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">AC = AC - M</text>
+                    </g>
+
+                    <!-- Node 00 / 11: No Op -->
+                    <g id="fcGroupNoop" transform="translate(200, 90)">
+                        <rect id="fcBoxNoop" x="0" y="0" width="100" height="45" rx="8" fill="#0f172a" stroke="#94a3b8" stroke-width="2"/>
+                        <text x="50" y="18" fill="#94a3b8" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">0 0  or  1 1</text>
+                        <text x="50" y="34" fill="#cbd5e1" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">No Operation</text>
+                    </g>
+
+                    <!-- Node 01: AC = AC + M -->
+                    <g id="fcGroup01" transform="translate(370, 90)">
+                        <rect id="fcBox01" x="0" y="0" width="100" height="45" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="2"/>
+                        <text x="50" y="18" fill="#10b981" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">Q0, Q-1 = 0 1</text>
+                        <text x="50" y="34" fill="#f8fafc" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">AC = AC + M</text>
+                    </g>
+
+                    <!-- Convergence to Shift Box -->
+                    <path d="M 80 135 L 80 165 L 250 165" stroke="#475569" stroke-width="2"/>
+                    <path d="M 250 135 L 250 165" stroke="#475569" stroke-width="2"/>
+                    <path d="M 420 135 L 420 165 L 250 165" stroke="#475569" stroke-width="2"/>
+                    <path d="M 250 165 L 250 185" stroke="#475569" stroke-width="2"/>
+
+                    <!-- Shift Node -->
+                    <g id="fcGroupShift" transform="translate(160, 185)">
+                        <rect id="fcBoxShift" x="0" y="0" width="180" height="40" rx="8" fill="#0f172a" stroke="#06b6d4" stroke-width="2"/>
+                        <text x="90" y="24" fill="#38bdf8" font-size="11" font-family="monospace" font-weight="bold" text-anchor="middle">Arithmetic Right Shift [AC, Q, Q-1]</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Problem Setup Bar -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-wrap justify-between items-center font-mono text-xs gap-3">
+                <span class="text-slate-300">Multiplicand (M): <strong id="valM" class="text-cyan-400">3</strong></span>
+                <span class="text-slate-300">Multiplier (Q): <strong id="valQ" class="text-cyan-400">-2</strong></span>
+                <span class="text-slate-300">Step: <strong id="valCycle" class="text-amber-400">1 / 4</strong></span>
+            </div>
+
+            <!-- Hardware Registers Display -->
+            <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="text-[11px] font-mono text-slate-400 mb-1 font-bold">ACCUMULATOR (AC)</div>
+                    <div id="dispAC" class="font-mono text-lg font-bold text-cyan-400">0000</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="text-[11px] font-mono text-slate-400 mb-1 font-bold">MULTIPLIER (Q)</div>
+                    <div id="dispQ" class="font-mono text-lg font-bold text-emerald-400">0000</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="text-[11px] font-mono text-slate-400 mb-1 font-bold">BIT Q-1</div>
+                    <div id="dispQ1" class="font-mono text-lg font-bold text-amber-400">0</div>
+                </div>
+            </div>
+
+            <!-- Action Prompt -->
+            <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
+                <div id="boothPrompt" class="text-sm text-slate-200 font-medium text-center">
+                    Examine bit pair <strong class="text-amber-400 font-mono">Q0 & Q-1</strong>. What is the ALU action?
+                </div>
+                <div id="boothButtons" class="flex flex-wrap gap-3">
+                    <button onclick="stepBooth('sub')" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold rounded-lg border border-slate-700 text-rose-400 transition">
+                        AC = AC - M & Shift
+                    </button>
+                    <button onclick="stepBooth('add')" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold rounded-lg border border-slate-700 text-emerald-400 transition">
+                        AC = AC + M & Shift
+                    </button>
+                    <button onclick="stepBooth('noop')" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold rounded-lg border border-slate-700 text-slate-300 transition">
+                        Shift Only (No Op)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step Log -->
+            <div id="boothLog" class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 space-y-1 max-h-36 overflow-y-auto">
+                <div>Ready to start.</div>
+            </div>
+        </section>
+
+        <!-- MODE 3: RESTORING DIVISION QUEST -->
+        <section id="sec-division" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Restoring Division Quest & Flowchart</h2>
+                    <p class="text-xs text-slate-400">Guide the ALU through Restoring Division cycles step-by-step</p>
+                </div>
+                <button onclick="resetDivision()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition">
+                    🔄 New Problem
+                </button>
+            </div>
+
+            <!-- Algorithm Explanation Card -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                <div class="flex items-center justify-between cursor-pointer" onclick="document.getElementById('divExpText').classList.toggle('hidden')">
+                    <h3 class="text-xs font-mono font-bold text-cyan-400 flex items-center gap-2">
+                        <span>📖 How Restoring Division Works (Click to toggle explanation)</span>
+                    </h3>
+                    <span class="text-xs text-slate-500 font-mono">▼</span>
+                </div>
+                <div id="divExpText" class="text-xs text-slate-300 leading-relaxed space-y-2 font-sans border-t border-slate-800 pt-3">
+                    <p>
+                        <strong class="text-white">Restoring Integer Division</strong> divides an unsigned dividend $Q$ by divisor $M$. In each iteration $N$ (where $N$ is bit width):
+                    </p>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-400 font-mono text-[11px]">
+                        <li><span class="text-cyan-400 font-bold">Shift Left:</span> Combined registers [AC, Q] shift 1 bit left.</li>
+                        <li><span class="text-cyan-400 font-bold">Subtract Divisor:</span> Compute <code class="text-rose-400">AC = AC - M</code>.</li>
+                        <li><span class="text-cyan-400 font-bold">Test Sign of AC:</span>
+                            <br>&nbsp;&nbsp;• If <strong class="text-rose-400">AC &lt; 0</strong>: Restore previous AC value (<code class="text-amber-400">AC = AC + M</code>) and set quotient bit <code class="text-slate-300">Q0 = 0</code>.
+                            <br>&nbsp;&nbsp;• If <strong class="text-emerald-400">AC &ge; 0</strong>: Retain subtracted AC value and set quotient bit <code class="text-emerald-400">Q0 = 1</code>.
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Interactive Visual SVG Flowchart for Restoring Division -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col items-center">
+                <div class="text-[11px] font-mono text-slate-400 mb-2 font-bold w-full text-left flex justify-between items-center">
+                    <span>⚡ RESTORING DIVISION DECISION FLOWCHART</span>
+                    <span id="fcDivStatus" class="text-amber-400">Current Step: Phase 1 (Shift & Sub)</span>
+                </div>
+                <svg id="svgDivFlowchart" class="w-full max-w-lg h-auto" viewBox="0 0 500 220">
+                    <!-- Step 1: Shift Left -->
+                    <rect id="divFcStep1" x="30" y="20" width="130" height="40" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+                    <text x="95" y="44" fill="#38bdf8" font-size="11" font-family="monospace" font-weight="bold" text-anchor="middle">1. Shift Left [AC, Q]</text>
+
+                    <path d="M 160 40 L 190 40" stroke="#475569" stroke-width="2"/>
+
+                    <!-- Step 2: AC = AC - M -->
+                    <rect id="divFcStep2" x="190" y="20" width="120" height="40" rx="8" fill="#0f172a" stroke="#f43f5e" stroke-width="2"/>
+                    <text x="250" y="44" fill="#f43f5e" font-size="11" font-family="monospace" font-weight="bold" text-anchor="middle">2. AC = AC - M</text>
+
+                    <path d="M 310 40 L 350 40 L 350 75" stroke="#475569" stroke-width="2"/>
+
+                    <!-- Step 3: Sign Test Decision Diamond -->
+                    <g transform="translate(350, 95)">
+                        <polygon id="divFcPolySign" points="0,-20 50,0 0,20 -50,0" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+                        <text x="0" y="4" fill="#f59e0b" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">AC &lt; 0 ?</text>
+                    </g>
+
+                    <!-- Branch YES (AC < 0) -> Restore -->
+                    <path d="M 300 95 L 140 95 L 140 140" stroke="#475569" stroke-width="2"/>
+                    <text x="220" y="90" fill="#f43f5e" font-size="10" font-family="monospace" font-weight="bold">YES (Negative)</text>
+
+                    <g id="divFcGroupRestore" transform="translate(70, 140)">
+                        <rect id="divFcBoxRestore" x="0" y="0" width="140" height="45" rx="8" fill="#0f172a" stroke="#f43f5e" stroke-width="2"/>
+                        <text x="70" y="18" fill="#f43f5e" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">Restore: AC = AC + M</text>
+                        <text x="70" y="34" fill="#cbd5e1" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">Set Q0 = 0</text>
+                    </g>
+
+                    <!-- Branch NO (AC >= 0) -> Keep -->
+                    <path d="M 400 95 L 420 95 L 420 140" stroke="#475569" stroke-width="2"/>
+                    <text x="425" y="90" fill="#10b981" font-size="10" font-family="monospace" font-weight="bold">NO</text>
+
+                    <g id="divFcGroupKeep" transform="translate(350, 140)">
+                        <rect id="divFcBoxKeep" x="0" y="0" width="140" height="45" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="2"/>
+                        <text x="70" y="18" fill="#10b981" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">Keep AC (No Restore)</text>
+                        <text x="70" y="34" fill="#cbd5e1" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">Set Q0 = 1</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Problem Setup Bar -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-wrap justify-between items-center font-mono text-xs gap-3">
+                <span class="text-slate-300">Dividend (Q): <strong id="divQVal" class="text-cyan-400">7</strong></span>
+                <span class="text-slate-300">Divisor (M): <strong id="divMVal" class="text-cyan-400">3</strong></span>
+                <span class="text-slate-300">Cycle: <strong id="divStepVal" class="text-amber-400">1 / 4</strong></span>
+                <span class="text-slate-300">Phase: <strong id="divPhaseVal" class="text-emerald-400">1. Shift & Subtract</strong></span>
+            </div>
+
+            <!-- Hardware Registers Display -->
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="text-[11px] font-mono text-slate-400 mb-1 font-bold">ACCUMULATOR (AC)</div>
+                    <div id="dispDivAC" class="font-mono text-xl font-bold text-cyan-400">00000</div>
+                    <div id="dispDivACDec" class="text-[11px] font-mono text-slate-400 mt-1">(Decimal: 0)</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="text-[11px] font-mono text-slate-400 mb-1 font-bold">QUOTIENT REGISTER (Q)</div>
+                    <div id="dispDivQ" class="font-mono text-xl font-bold text-emerald-400">0111</div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
+                <div id="divPrompt" class="text-sm text-slate-200 font-medium text-center">
+                    Phase 1: Perform Left Shift [AC, Q] and Subtract Divisor M (AC = AC - M).
+                </div>
+                
+                <!-- Action Controls -->
+                <div id="divPhase1Btns" class="flex justify-center">
+                    <button onclick="stepDivShiftSub()" class="w-full sm:w-2/3 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono rounded-lg transition">
+                        ⚡ Shift Left & Subtract Divisor (M)
+                    </button>
+                </div>
+
+                <div id="divPhase2Btns" class="hidden flex flex-col sm:flex-row gap-3">
+                    <button onclick="stepDivRestore(true)" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-mono font-bold rounded-lg border border-slate-700 transition">
+                        AC &lt; 0: Restore AC (AC = AC + M) & Set Q0 = 0
+                    </button>
+                    <button onclick="stepDivRestore(false)" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-mono font-bold rounded-lg border border-slate-700 transition">
+                        AC &ge; 0: Keep AC & Set Q0 = 1
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step Log -->
+            <div id="divLog" class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 space-y-1 max-h-36 overflow-y-auto">
+                <div>Ready to execute division algorithm.</div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-8 text-xs text-slate-500 font-mono">
+        COA Computer Architecture Hardware Suite &copy; 2026
+    </footer>
+
+    <!-- INTERACTIVE SCRIPT -->
+    <script>
+        // --- GLOBAL GAME STATE ---
+        let score = 0;
+
+        function addScore(points) {
+            score += points;
+            document.getElementById('gameScore').innerText = score;
+        }
+
+        // --- TAB NAVIGATION ---
+        function setTab(tabName) {
+            ['adder', 'booth', 'division'].forEach(t => {
+                document.getElementById(`sec-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-${t}`);
+                btn.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-slate-800 text-slate-300 hover:bg-slate-700";
+            });
+
+            document.getElementById(`sec-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-cyan-500 text-slate-950";
+
+            if (tabName === 'adder') newAdderChallenge();
+            if (tabName === 'booth') resetBooth();
+            if (tabName === 'division') resetDivision();
+        }
+
+        // --- MODE 1: ADDER LOGIC & GAME ---
+        let adderState = { A: 0, B: 0, Cin: 0 };
+        let adderGoal = { sum: 1, carry: 0 };
+
+        function toggleBit(bit) {
+            adderState[bit] = adderState[bit] === 0 ? 1 : 0;
+            const btn = document.getElementById(`btn${bit}`);
+            btn.innerText = adderState[bit];
+            btn.className = adderState[bit] 
+                ? "w-10 h-9 rounded-lg font-mono font-bold text-base bg-cyan-500 text-slate-950 border border-cyan-400 transition"
+                : "w-10 h-9 rounded-lg font-mono font-bold text-base bg-slate-800 text-slate-400 border border-slate-700 transition";
+            updateAdderUI();
+        }
+
+        function newAdderChallenge() {
+            const isFull = document.getElementById('adderType').value === 'full';
+            if (!isFull) {
+                const goals = [{sum: 1, carry: 0}, {sum: 0, carry: 1}, {sum: 0, carry: 0}];
+                adderGoal = goals[Math.floor(Math.random() * goals.length)];
+            } else {
+                const goals = [{sum: 1, carry: 0}, {sum: 0, carry: 1}, {sum: 1, carry: 1}];
+                adderGoal = goals[Math.floor(Math.random() * goals.length)];
+            }
+            document.getElementById('adderChallenge').innerText = `Set Inputs to make SUM=${adderGoal.sum} & CARRY=${adderGoal.carry}`;
+            document.getElementById('adderFeedback').className = "hidden";
+        }
+
+        function updateAdderUI() {
+            const type = document.getElementById('adderType').value;
+            const rowCin = document.getElementById('rowCin');
+            rowCin.style.display = (type === 'full') ? 'flex' : 'none';
+
+            const svgHA = document.getElementById('svgHalfAdder');
+            const svgFA = document.getElementById('svgFullAdder');
+
+            let sum = 0, carry = 0;
+
+            if (type === 'half') {
+                svgHA.classList.remove('hidden');
+                svgFA.classList.add('hidden');
+
+                const a = adderState.A;
+                const b = adderState.B;
+                sum = a ^ b;
+                carry = a & b;
+
+                // Wire highlights
+                setWireState('wireA_XOR', a, '#38bdf8');
+                setWireState('wireA_AND', a, '#38bdf8');
+                setWireState('wireB_XOR', b, '#38bdf8');
+                setWireState('wireB_AND', b, '#38bdf8');
+
+                setWireState('wireXOR_SUM', sum, '#38bdf8');
+                setWireState('wireAND_CARRY', carry, '#34d399');
+
+                document.getElementById('nodeA').setAttribute('fill', a ? '#38bdf8' : '#475569');
+                document.getElementById('nodeB').setAttribute('fill', b ? '#38bdf8' : '#475569');
+
+                // Gate Bodies
+                document.getElementById('gateXorBody').setAttribute('stroke', sum ? '#38bdf8' : '#475569');
+                document.getElementById('gateXorBody').setAttribute('fill', sum ? '#0c4a6e' : '#0f172a');
+
+                document.getElementById('gateAndBody').setAttribute('stroke', carry ? '#34d399' : '#475569');
+                document.getElementById('gateAndBody').setAttribute('fill', carry ? '#064e3b' : '#0f172a');
+
+                // LED Outputs
+                const ledSum = document.getElementById('svgLedSum');
+                ledSum.setAttribute('fill', sum ? '#0284c7' : '#1e293b');
+                ledSum.setAttribute('stroke', sum ? '#38bdf8' : '#475569');
+                document.getElementById('svgTextSum').innerText = sum;
+                document.getElementById('svgTextSum').setAttribute('fill', sum ? '#ffffff' : '#64748b');
+
+                const ledCarry = document.getElementById('svgLedCarry');
+                ledCarry.setAttribute('fill', carry ? '#059669' : '#1e293b');
+                ledCarry.setAttribute('stroke', carry ? '#34d399' : '#475569');
+                document.getElementById('svgTextCarry').innerText = carry;
+                document.getElementById('svgTextCarry').setAttribute('fill', carry ? '#ffffff' : '#64748b');
+
+            } else {
+                svgHA.classList.add('hidden');
+                svgFA.classList.remove('hidden');
+
+                const a = adderState.A;
+                const b = adderState.B;
+                const cin = adderState.Cin;
+
+                const xor1 = a ^ b;
+                const and1 = a & b;
+                sum = xor1 ^ cin;
+                const and2 = xor1 & cin;
+                carry = and1 | and2;
+
+                setWireState('wireFA_A', a, '#38bdf8');
+                setWireState('wireFA_A_AND1', a, '#38bdf8');
+                setWireState('wireFA_B', b, '#38bdf8');
+                setWireState('wireFA_B_AND1', b, '#38bdf8');
+                setWireState('wireFA_Cin', cin, '#38bdf8');
+
+                setWireState('wireFA_XOR1_XOR2', xor1, '#38bdf8');
+                setWireState('wireFA_XOR1_AND2', xor1, '#38bdf8');
+
+                setWireState('wireFA_XOR2_SUM', sum, '#38bdf8');
+                setWireState('wireFA_AND1_OR', and1, '#34d399');
+                setWireState('wireFA_AND2_OR', and2, '#34d399');
+                setWireState('wireFA_OR_COUT', carry, '#c084fc');
+
+                // Gates
+                document.getElementById('gateFaXor1').setAttribute('stroke', xor1 ? '#38bdf8' : '#475569');
+                document.getElementById('gateFaAnd1').setAttribute('stroke', and1 ? '#34d399' : '#475569');
+                document.getElementById('gateFaXor2').setAttribute('stroke', sum ? '#38bdf8' : '#475569');
+                document.getElementById('gateFaAnd2').setAttribute('stroke', and2 ? '#34d399' : '#475569');
+                document.getElementById('gateFaOr').setAttribute('stroke', carry ? '#c084fc' : '#475569');
+
+                // LEDs
+                document.getElementById('faLedSum').setAttribute('fill', sum ? '#0284c7' : '#1e293b');
+                document.getElementById('faLedSum').setAttribute('stroke', sum ? '#38bdf8' : '#475569');
+                document.getElementById('faTextSum').innerText = sum;
+                document.getElementById('faTextSum').setAttribute('fill', sum ? '#ffffff' : '#64748b');
+
+                document.getElementById('faLedCout').setAttribute('fill', carry ? '#059669' : '#1e293b');
+                document.getElementById('faLedCout').setAttribute('stroke', carry ? '#34d399' : '#475569');
+                document.getElementById('faTextCout').innerText = carry;
+                document.getElementById('faTextCout').setAttribute('fill', carry ? '#ffffff' : '#64748b');
+            }
+
+            // Verify challenge match
+            const fb = document.getElementById('adderFeedback');
+            if (sum === adderGoal.sum && carry === adderGoal.carry) {
+                fb.classList.remove('hidden');
+                fb.className = "p-3 rounded-xl font-mono text-xs text-center font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                fb.innerText = "🎯 Goal Achieved! Target signals matched (+50 XP)";
+                addScore(50);
+            } else {
+                fb.classList.add('hidden');
+            }
+        }
+
+        function setWireState(elemId, isActive, activeColor) {
+            const el = document.getElementById(elemId);
+            if (!el) return;
+            if (isActive) {
+                el.setAttribute('stroke', activeColor);
+                el.setAttribute('stroke-width', '4');
+                el.setAttribute('filter', 'url(#glowCyan)');
+            } else {
+                el.setAttribute('stroke', '#334155');
+                el.setAttribute('stroke-width', '3.5');
+                el.removeAttribute('filter');
+            }
+        }
+
+        // --- MODE 2: BOOTH'S MULTIPLICATION GAME ---
+        let boothState = { cycle: 1, m: 3, q: -2, ac: 0, qReg: 0, q1: 0 };
+
+        function resetBooth() {
+            boothState.cycle = 1;
+            boothState.m = Math.floor(Math.random() * 4) + 1; // 1 to 4
+            boothState.q = (Math.floor(Math.random() * 4) + 1) * -1; // -1 to -4
+            boothState.ac = 0;
+            boothState.qReg = boothState.q & 0xF;
+            boothState.q1 = 0;
+
+            document.getElementById('valM').innerText = boothState.m;
+            document.getElementById('valQ').innerText = boothState.q;
+            document.getElementById('boothLog').innerHTML = `<div>Initialized: M=${boothState.m}, Q=${boothState.q}</div>`;
+            renderBoothUI();
+        }
+
+        function renderBoothUI() {
+            document.getElementById('valCycle').innerText = `${boothState.cycle} / 4`;
+            document.getElementById('dispAC').innerText = toBin(boothState.ac, 4);
+            document.getElementById('dispQ').innerText = toBin(boothState.qReg, 4);
+            document.getElementById('dispQ1').innerText = boothState.q1;
+        }
+
+        function stepBooth(userChoice) {
+            if (boothState.cycle > 4) return;
+
+            const q0 = boothState.qReg & 1;
+            const q1 = boothState.q1;
+            let correct = 'noop';
+            if (q0 === 1 && q1 === 0) correct = 'sub';
+            if (q0 === 0 && q1 === 1) correct = 'add';
+
+            const log = document.getElementById('boothLog');
+
+            if (userChoice === correct) {
+                log.innerHTML += `<div class="text-emerald-400">✓ Step ${boothState.cycle}: Correct ALU operation!</div>`;
+                addScore(100);
+
+                if (correct === 'sub') boothState.ac = (boothState.ac - boothState.m) & 0xF;
+                if (correct === 'add') boothState.ac = (boothState.ac + boothState.m) & 0xF;
+
+                // Arithmetic Right Shift
+                let combined = (boothState.ac << 4) | boothState.qReg;
+                boothState.q1 = q0;
+                boothState.qReg = (combined >> 1) & 0xF;
+                let signBit = (boothState.ac & 8);
+                boothState.ac = (combined >> 5) & 0xF;
+                if (signBit) boothState.ac |= 8;
+
+                boothState.cycle++;
+                if (boothState.cycle > 4) {
+                    let finalProduct = (boothState.ac << 4) | boothState.qReg;
+                    if (finalProduct & 0x80) finalProduct -= 0x100;
+                    log.innerHTML += `<div class="text-cyan-400 font-bold">🎉 Multiplication Finished! Final Product = ${finalProduct}</div>`;
+                }
+                renderBoothUI();
+            } else {
+                log.innerHTML += `<div class="text-rose-400">✗ Wrong choice! For Q0=${q0}, Q-1=${q1}, expected ${correct.toUpperCase()}.</div>`;
+            }
+        }
+
+        // --- MODE 3: RESTORING DIVISION QUEST ---
+        let divState = { step: 1, m: 3, q: 7, ac: 0, phase: 1, expectedRestore: false };
+
+        function resetDivision() {
+            divState.step = 1;
+            divState.m = Math.floor(Math.random() * 3) + 2; // Divisor M (2 to 4)
+            divState.q = Math.floor(Math.random() * 6) + 5; // Dividend Q (5 to 10)
+            divState.ac = 0;
+            divState.phase = 1;
+
+            document.getElementById('divQVal').innerText = divState.q;
+            document.getElementById('divMVal').innerText = divState.m;
+            document.getElementById('divLog').innerHTML = `<div>Initialized Restoring Division: Dividend Q=${divState.q}, Divisor M=${divState.m}</div>`;
+            renderDivisionUI();
+        }
+
+        function renderDivisionUI() {
+            document.getElementById('divStepVal').innerText = `${divState.step} / 4`;
+            document.getElementById('dispDivAC').innerText = toBin(divState.ac, 5);
+            document.getElementById('dispDivACDec').innerText = `(Decimal: ${divState.ac > 15 ? divState.ac - 32 : divState.ac})`;
+            document.getElementById('dispDivQ').innerText = toBin(divState.q, 4);
+
+            const p1Btns = document.getElementById('divPhase1Btns');
+            const p2Btns = document.getElementById('divPhase2Btns');
+            const prompt = document.getElementById('divPrompt');
+            const phaseVal = document.getElementById('divPhaseVal');
+
+            const status = document.getElementById('fcDivStatus');
+            const fcStep1 = document.getElementById('divFcStep1');
+            const fcStep2 = document.getElementById('divFcStep2');
+            const fcRestore = document.getElementById('divFcBoxRestore');
+            const fcKeep = document.getElementById('divFcBoxKeep');
+
+            if (fcStep1) fcStep1.setAttribute('fill', divState.phase === 1 ? '#0c4a6e' : '#0f172a');
+            if (fcStep2) fcStep2.setAttribute('fill', divState.phase === 1 ? '#881337' : '#0f172a');
+            if (fcRestore) fcRestore.setAttribute('fill', '#0f172a');
+            if (fcKeep) fcKeep.setAttribute('fill', '#0f172a');
+
+            if (divState.phase === 1) {
+                p1Btns.classList.remove('hidden');
+                p2Btns.classList.add('hidden');
+                phaseVal.innerText = "1. Shift & Subtract";
+                prompt.innerText = "Phase 1: Perform Left Shift [AC, Q] and Subtract Divisor M (AC = AC - M).";
+                if (status) status.innerText = "Current Step: Phase 1 (Shift Left & Subtract Divisor M)";
+            } else {
+                p1Btns.classList.add('hidden');
+                p2Btns.classList.remove('hidden');
+                phaseVal.innerText = "2. Sign Check & Restore";
+                prompt.innerText = "Phase 2: Inspect AC sign. Is AC < 0 (Restore needed) or AC >= 0?";
+                if (status) {
+                    status.innerText = divState.expectedRestore 
+                        ? "Current Step: Phase 2 (AC < 0 -> Restore AC & Q0 = 0)"
+                        : "Current Step: Phase 2 (AC >= 0 -> Keep AC & Q0 = 1)";
+                }
+
+                if (divState.expectedRestore && fcRestore) {
+                    fcRestore.setAttribute('fill', '#881337');
+                } else if (!divState.expectedRestore && fcKeep) {
+                    fcKeep.setAttribute('fill', '#064e3b');
+                }
+            }
+        }
+
+        function stepDivShiftSub() {
+            if (divState.phase !== 1 || divState.step > 4) return;
+
+            // Shift left [AC, Q]
+            let combined = ((divState.ac << 4) | (divState.q & 0xF)) << 1;
+            divState.ac = (combined >> 4) & 0x1F;
+            divState.q = combined & 0xF;
+
+            // Subtract Divisor M
+            divState.ac = (divState.ac - divState.m) & 0x1F;
+
+            // Check if negative in 5-bit 2's complement
+            divState.expectedRestore = (divState.ac & 0x10) !== 0;
+
+            const log = document.getElementById('divLog');
+            let decAC = divState.expectedRestore ? divState.ac - 32 : divState.ac;
+            log.innerHTML += `<div class="text-cyan-400">Step ${divState.step} Shift & Subtract -> AC = ${decAC} (${toBin(divState.ac, 5)})</div>`;
+
+            divState.phase = 2;
+            renderDivisionUI();
+        }
+
+        function stepDivRestore(userRestored) {
+            if (divState.phase !== 2 || divState.step > 4) return;
+
+            const log = document.getElementById('divLog');
+
+            if (userRestored === divState.expectedRestore) {
+                addScore(100);
+                if (divState.expectedRestore) {
+                    divState.ac = (divState.ac + divState.m) & 0x1F;
+                    divState.q = divState.q & ~1; // Q0 = 0
+                    log.innerHTML += `<div class="text-emerald-400">✓ Step ${divState.step}: AC was negative! AC Restored to ${divState.ac} & Q0=0</div>`;
+                } else {
+                    divState.q = divState.q | 1; // Q0 = 1
+                    log.innerHTML += `<div class="text-emerald-400">✓ Step ${divState.step}: AC was positive! Kept AC=${divState.ac} & Q0=1</div>`;
+                }
+
+                divState.step++;
+                if (divState.step > 4) {
+                    log.innerHTML += `<div class="text-cyan-400 font-bold">🎉 Division Complete! Quotient (Q) = ${divState.q}, Remainder (AC) = ${divState.ac}</div>`;
+                } else {
+                    divState.phase = 1;
+                }
+                renderDivisionUI();
+            } else {
+                log.innerHTML += `<div class="text-rose-400">✗ Incorrect sign evaluation! Check AC value carefully.</div>`;
+            }
+        }
+
+        function toBin(num, bits) {
+            let b = (num >>> 0).toString(2);
+            return b.length > bits ? b.slice(-bits) : b.padStart(bits, '0');
+        }
+
+        // Initialize default view
+        window.onload = function() {
+            updateAdderUI();
+        };
+    </script>
+</body>
+</html>
